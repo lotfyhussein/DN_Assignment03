@@ -25,13 +25,14 @@ def handle_list_files(clientSocket):
     rsize = 0
     size = int(msg)
     clientSocket.send("start".encode())
-    data = ''
+    full_msg = ''
     while True:
-        data += clientSocket.recv(BUFFER_SIZE).decode()
+        data = clientSocket.recv(BUFFER_SIZE).decode()
         rsize += len(data)
+        full_msg += data
         if (rsize >= size):
-            print(data)
-            return data.splitlines()
+            print(full_msg)
+            return full_msg.splitlines()
 
 def handle_upload(clientSocket):
     clientSocket.recv(BUFFER_SIZE).decode()
