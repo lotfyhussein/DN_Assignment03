@@ -107,18 +107,26 @@ clientSocket = socket(AF_INET, SOCK_STREAM)
 #
 clientSocket.connect((serverURL, serverPort))
 print("Client connected to server: " + serverURL + ":" + str(serverPort))
+
+received_file_list = []
 while True:
-    command = input('Enter command: ') 
-    clientSocket.send(command.encode())
+    command = input('Enter command: ')
     if command == "LIST_FILES":
+        clientSocket.send(command.encode())
         received_file_list = handle_list_files(clientSocket)
     elif command == "UPLOAD":
+        clientSocket.send(command.encode())
         handle_upload(clientSocket)
     elif command == "DOWNLOAD":
-        handle_download(clientSocket, received_file_list)
+        # Empty received list
+        if not received_file_list:
+            print("List all the files first!")
+        else:
+            clientSocket.send(command.encode())
+            handle_download(clientSocket, received_file_list)
     elif command == "DISCONNECT":
-        break
+        clientSocket.send(command.encode())
         clientSocket.close()
+        break
     else:
         print('Unknown Command')
-
