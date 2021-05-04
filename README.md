@@ -6,9 +6,7 @@
 
         Fixed:-Download: Should it require the LIST_FILES command first
         
-        Fine, but check:-UPLOAD the same file: Should it overwrite.
-
-        CheckIfWorks:-In order to generate different MD5 hashes, file content must be diffrent
+        Fixed:-UPLOAD the same file: Should it overwrite.
 
         -Killed client
             Traceback (most recent call last):
