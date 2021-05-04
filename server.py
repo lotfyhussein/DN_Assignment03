@@ -1,6 +1,7 @@
 from socket import *
 import hashlib
 import os
+
 path = './Server_Files'
 serverPort = 7700
 serverURL = "localhost"

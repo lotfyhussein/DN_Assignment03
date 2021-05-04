@@ -1,6 +1,8 @@
 from socket import *
 import hashlib
 import os
+import sys
+
 serverPort = 7700
 serverURL = "localhost"
 BUFFER_SIZE = 1024
@@ -15,7 +17,6 @@ def generate_md5_hash (file_data):
 def getFileSize(filename):
     st = os.stat(filename)
     return st.st_size
-
 
 def handle_list_files(clientSocket):
     msg = clientSocket.recv(BUFFER_SIZE).decode()
@@ -99,14 +100,15 @@ def handle_download(clientSocket, received_file_list):
         print("Success!")
     return
 
-
-# Create TCP socket for future connections
-#
+# Create TCP socket for connections with the server
 clientSocket = socket(AF_INET, SOCK_STREAM)
-# 
-# Connect the client to the specified server
-#
-clientSocket.connect((serverURL, serverPort))
+
+# Try to connect the client to the specified server
+try:
+    clientSocket.connect((serverURL, serverPort))
+except:
+    sys.exit("Server is not running. Please try to connect later!")
+
 print("Client connected to server: " + serverURL + ":" + str(serverPort))
 
 received_file_list = []
@@ -119,7 +121,7 @@ while True:
         clientSocket.send(command.encode())
         handle_upload(clientSocket)
     elif command == "DOWNLOAD":
-        # Empty received list
+        # Handle empty received list
         if not received_file_list:
             print("List all the files first!")
         else:
