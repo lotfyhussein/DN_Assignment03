@@ -18,141 +18,133 @@ def getFileSize(filename):
     st = os.stat(filename)
     return st.st_size
 
-# Error handling send and receive
-def recv_safe(clientSocket, BUFFER_SIZE):
+
+def handle_list_files(clientSocket, command):
     try:
-        return clientSocket.recv(BUFFER_SIZE), True
-    except:
-        return None, False
+        # Processing the commnad
+        clientSocket.send(command.encode())
 
-def send_safe(clientSocket, data):
+        # Receive the size of the list in bytes
+        msg = clientSocket.recv(BUFFER_SIZE).decode()
+
+        # Handle empty list
+        if msg == "No files available at the moment":
+            print("Server Response: No files available at the moment")
+            return True
+        # Get the msg size
+        size = int(msg)
+        # Tell the server to start sending the msg
+        clientSocket.send("start".encode())
+
+        # Start receiving the msg
+        full_msg = ''
+        rsize = 0
+        while True:
+            data = clientSocket.recv(BUFFER_SIZE).decode()
+            rsize += len(data)
+            full_msg += data
+            if (rsize >= size):
+                print(full_msg)
+                # Update the global list
+                global received_file_list
+                received_file_list = full_msg.splitlines()
+                return True
+    except:
+        return False
+
+def handle_upload(clientSocket, command):
     try:
-        clientSocket.send(data)
-        return True
-    except:
-        return False
+        # Processing the commnad
+        clientSocket.send(command.encode())
 
-def handle_list_files(clientSocket):
-    # Processing the commnad
-    status = send_safe(clientSocket, command.encode())
-    if not status
-        print("Connection dropped!")
-        return False
+        # Wait for server confimation
+        msg = clientSocket.recv(BUFFER_SIZE).decode()
 
-    # Reset the list
-    received_file_list = []
-
-    # Receive the size of the list in bytes
-    msg, status = recv_safe(clientSocket, BUFFER_SIZE).decode()
-    if not status:
-        print("Connection dropped!")
-        return False
-
-    # Handle empty list
-    if msg == "No files available at the moment":
-        print("Server Response: No files available at the moment")
-        return True
-
-    rsize = 0
-    size = int(msg)
-
-    send_safe(clientSocket, "start".encode())
-    full_msg = ''
-    while True:
-        data, status = recv_safe(clientSocket, BUFFER_SIZE).decode()
-        if not status:
-            print("Connection dropped!")
-            return False
-
-        rsize += len(data)
-        full_msg += data
-        if (rsize >= size):
-            print(full_msg)
-            received_file_list = full_msg.splitlines()
+        # Get file name from user
+        try:
+            filename = input('Enter filename to be sent: ')
+            file_size = getFileSize(path + '/' + filename)
+        except:
+            print("File Not Found!")
+            clientSocket.send("ABORT".encode())
             return True
 
-def handle_upload(clientSocket):
-    msg, status = recv_safe(clientSocket, BUFFER_SIZE).decode()
-    if not status:
-        print("Connection dropped!")
-        return None
+        # Prepare the filename and size and send it to the server
+        msg = filename + ';' + str(file_size)
+        clientSocket.send(msg.encode())
+        msg = clientSocket.recv(BUFFER_SIZE).decode() # wait for server's "Ready to receive a file" msg
 
-    filename = input('Enter filename to be sent: ')
-    file_size = getFileSize(path + '/' + filename)
-    msg = filename + ';' + str(file_size)
-    send_safe(clientSocket, msg.encode())
-    msg, status = recv_safe(clientSocket, BUFFER_SIZE).decode() # wait for server's "Ready to receive a file" msg
-    if not status:
-        print("Connection dropped!")
-        return None
+        # Start sending the file
+        f = open(path + '/' + filename, "rb")
+        data = f.read(1024)
+        while (data):
+            clientSocket.send(data)
+            data = f.read(1024)
+        f.close()
+        print('Sent ({} bytes)'.format(file_size)) 
 
-    ###
-    # start sending the file
-    ###
-    f = open(path + '/' + filename, "rb")
-    data = f.read(1024)
-    while (data):
-       send_safe(clientSocket, data)
-       data = f.read(1024)
-    f.close()
-    print('Sent ({} bytes)'.format(file_size)) 
+        # MD5 Veirifcation Porcess
+        md5_server = clientSocket.recv(BUFFER_SIZE).decode() # get Md5 hash from server
+        f = open(path + '/' + filename, "rb")
+        file_data = f.read()
+        md5_local = generate_md5_hash(file_data)
+        if md5_server != md5_local:
+            print("Fail")
+        else:
+            print("Success!")
+        return True
+    except:
+        return False
 
-    # MD5 Veirifcation Porcess
-    md5_server, status = recv_safe(clientSocket, BUFFER_SIZE).decode() # get Md5 hash from server
-    if not status:
-        print("Connection dropped!")
-        return None
+def handle_download(clientSocket, command):
+    try:
+        # Processing the commnad
+        clientSocket.send(command.encode())
 
-    f = open(path + '/' + filename, "rb")
-    file_data = f.read()
-    md5_local = generate_md5_hash(file_data)
-    if md5_server != md5_local:
-        print("Fail")
-    else:
-        print("Success!")
-    return
+        # Wait for server confirmation
+        msg = clientSocket.recv(BUFFER_SIZE).decode()
 
-def handle_download(clientSocket, received_file_list):
-    msg, status = recv_safe(clientSocket, BUFFER_SIZE).decode()
-    if not status:
-        print("Connection dropped!")
-        return None
+        # Get file id from user
+        file_id = input('Enter file id: ')
+        filename = ''
+        for f in received_file_list:
+            l = f.split(';')
+            if l[0] == file_id:
+                filename = l[0] + l[1]
+                size = int(l[2])
+        if filename == '':
+            print('No such file available!')
+            clientSocket.send("ABORT".encode())
+            return True
 
-    file_id = input('Enter file id: ')
-    for f in received_file_list:
-        l = f.split(';')
-        if l[0] == file_id:
-            filename = l[0] + l[1]
-            size = int(l[2])
-    if not size:
-        print('No such file available!')
-        return
-    send_safe(clientSocket, file_id.encode())
-    rsize = 0
-    with open(path + '/' + filename , 'wb') as f:
-        while True:
-            data, status =  recv_safe(clientSocket, BUFFER_SIZE)
-            if not status:
-                print("Connection dropped!")
-                return None
+        # Send file id to the server
+        clientSocket.send(file_id.encode())
 
-            rsize += len(data)
-            f.write(data)
-            if (rsize >= size):
-                break
-    f.close()
-    print('Recieved ({} bytes)'.format(size)) 
-    ###
-    # Generate MD5 Hash and compare it to file_id
-    ###
-    f = open(path + '/' + filename, "rb")
-    file_data = f.read()
-    md5_hash = generate_md5_hash(file_data)
-    if md5_hash != file_id:
-        print("Fail")
-    else:
-        print("Success!")
-    return
+        # Start recieving the file
+        rsize = 0
+        with open(path + '/' + filename , 'wb') as f:
+            while True:
+                data = clientSocket.recv(BUFFER_SIZE)
+                rsize += len(data)
+                f.write(data)
+                if (rsize >= size):
+                    break
+        f.close()
+        print('Recieved ({} bytes)'.format(size)) 
+
+
+        # Generate MD5 Hash and compare it to file_id
+        f = open(path + '/' + filename, "rb")
+        file_data = f.read()
+        md5_hash = generate_md5_hash(file_data)
+        if md5_hash != file_id:
+            print("Fail")
+        else:
+            print("Success!")
+        return True
+    except:
+        return False
+
 
 # Create TCP socket for connections with the server
 clientSocket = socket(AF_INET, SOCK_STREAM)
@@ -169,29 +161,24 @@ connection_error = False
 while True:
     command = input('Enter command: ')
     if command == "LIST_FILES":
-        if handle_list_files(clientSocket, command) == False:
-            connection_error = True
+        connection_error = not handle_list_files(clientSocket, command)
     elif command == "UPLOAD":
-        send_safe(clientSocket, command.encode())
-        if handle_upload(clientSocket) == None:
-            connection_error = True
+        connection_error = not handle_upload(clientSocket, command)
     elif command == "DOWNLOAD":
         # Handle empty received list
         if not received_file_list:
             print("List all the files first!")
         else:
-            send_safe(clientSocket, command.encode())
-            if handle_download(clientSocket, received_file_list) == None:
-                connection_error = True
+            connection_error = not handle_download(clientSocket, command) 
     elif command == "DISCONNECT":
-        send_safe(clientSocket, command.encode())
-        clientSocket.close()
-        break
+            clientSocket.send(command.encode())
+            clientSocket.close()
+            break
     else:
         print('Unknown Command')
 
     # Check if error happend in any of the commands
     if connection_error:
-        print("Closing connection with server")
+        print("Connection dropped")
         clientSocket.close()
         break;
