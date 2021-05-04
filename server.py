@@ -46,6 +46,8 @@ def handle_upload(connectSocket):
     size = int(msg_split[1])
     rsize = 0
     connectSocket.send("Ready to receive a file".encode())
+
+    # Receiving file data
     with open(path + '/' + filename, 'wb') as f:
         while True:
             data = connectSocket.recv(BUFFER_SIZE)
@@ -54,15 +56,22 @@ def handle_upload(connectSocket):
             if (rsize >= size):
                 break
     f.close()
-    ###
-    # Generate MD5 Hash and send it to the client
-    ###
+    
+    # Generate MD5 hash and send it to the client
     f = open(path + '/' + filename, "rb")
     file_data = f.read()
     md5_hash = generate_md5_hash(file_data)
     connectSocket.send(md5_hash.encode())
+    f.close()
+
+    # Add MD5 hash to the file name.
+    # For Windows file with the same name has to be removed
+    for f in os.listdir(path):
+        if f == (md5_hash + ';' + filename):
+            os.remove(path + '/' + md5_hash + ';' + filename)
     os.rename(path + '/' + filename, path + '/' + md5_hash + ';' + filename)
-    print('Successfully received the file ({} bytes)'.format(size)) 
+
+    print('Successfully received the file ({} bytes)'.format(size))
     return 
 
 def handle_download(connectSocket):

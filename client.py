@@ -18,17 +18,30 @@ def getFileSize(filename):
     st = os.stat(filename)
     return st.st_size
 
+# Error handling send and receive
+def recv_safe(clientSocket, BUFFER_SIZE):
+    try:
+        return clientSocket.recv(BUFFER_SIZE)
+    except:
+        print("Receive Error::TODO fix")
+
+def send_safe(clientSocket, data):
+    try:
+        clientSocket.send(data)
+    except:
+        print("Send Error::TODO fix")
+
 def handle_list_files(clientSocket):
-    msg = clientSocket.recv(BUFFER_SIZE).decode()
+    msg = recv_safe(clientSocket, BUFFER_SIZE).decode()
     if msg == "No files available at the moment":
         print("Server Response: No files available at the moment")
         return None
     rsize = 0
     size = int(msg)
-    clientSocket.send("start".encode())
+    send_safe(clientSocket, "start".encode())
     full_msg = ''
     while True:
-        data = clientSocket.recv(BUFFER_SIZE).decode()
+        data = recv_safe(clientSocket, BUFFER_SIZE).decode()
         rsize += len(data)
         full_msg += data
         if (rsize >= size):
@@ -36,19 +49,19 @@ def handle_list_files(clientSocket):
             return full_msg.splitlines()
 
 def handle_upload(clientSocket):
-    clientSocket.recv(BUFFER_SIZE).decode()
+    recv_safe(clientSocket, BUFFER_SIZE).decode()
     filename = input('Enter filename to be sent: ')
     file_size = getFileSize(path + '/' + filename)
     msg = filename + ';' + str(file_size)
-    clientSocket.send(msg.encode())
-    clientSocket.recv(BUFFER_SIZE).decode() # wait for server's "Ready to receive a file" msg
+    send_safe(clientSocket, msg.encode())
+    recv_safe(clientSocket, BUFFER_SIZE).decode() # wait for server's "Ready to receive a file" msg
     ###
     # start sending the file
     ###
     f = open(path + '/' + filename, "rb")
     data = f.read(1024)
     while (data):
-       clientSocket.send(data)
+       send_safe(clientSocket, data)
        data = f.read(1024)
     f.close()
     print('Sent ({} bytes)'.format(file_size)) 
@@ -56,7 +69,7 @@ def handle_upload(clientSocket):
     ###
     # MD5 Veirifcation Porcess
     ###
-    md5_server = clientSocket.recv(BUFFER_SIZE).decode() # get Md5 hash from server
+    md5_server = recv_safe(clientSocket, BUFFER_SIZE).decode() # get Md5 hash from server
     f = open(path + '/' + filename, "rb")
     file_data = f.read()
     md5_local = generate_md5_hash(file_data)
@@ -67,7 +80,7 @@ def handle_upload(clientSocket):
     return
 
 def handle_download(clientSocket, received_file_list):
-    clientSocket.recv(BUFFER_SIZE).decode()
+    recv_safe(clientSocket, BUFFER_SIZE).decode()
     file_id = input('Enter file id: ')
     for f in received_file_list:
         l = f.split(';')
@@ -77,11 +90,11 @@ def handle_download(clientSocket, received_file_list):
     if not size:
         print('No such file available!')
         return
-    clientSocket.send(file_id.encode())
+    send_safe(clientSocket, file_id.encode())
     rsize = 0
     with open(path + '/' + filename , 'wb') as f:
         while True:
-            data =  clientSocket.recv(BUFFER_SIZE)
+            data =  recv_safe(clientSocket, BUFFER_SIZE)
             rsize += len(data)
             f.write(data)
             if (rsize >= size):
@@ -115,20 +128,20 @@ received_file_list = []
 while True:
     command = input('Enter command: ')
     if command == "LIST_FILES":
-        clientSocket.send(command.encode())
+        send_safe(clientSocket, command.encode())
         received_file_list = handle_list_files(clientSocket)
     elif command == "UPLOAD":
-        clientSocket.send(command.encode())
+        send_safe(clientSocket, command.encode())
         handle_upload(clientSocket)
     elif command == "DOWNLOAD":
         # Handle empty received list
         if not received_file_list:
             print("List all the files first!")
         else:
-            clientSocket.send(command.encode())
+            send_safe(clientSocket, command.encode())
             handle_download(clientSocket, received_file_list)
     elif command == "DISCONNECT":
-        clientSocket.send(command.encode())
+        send_safe(clientSocket, command.encode())
         clientSocket.close()
         break
     else:
