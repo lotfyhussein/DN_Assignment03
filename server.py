@@ -136,11 +136,9 @@ def handle_download(connectSocket):
 # IPv4 address provided in input.
 if len(sys.argv) == 2:
     try:
-        # socket.inet_aton(sys.argv[1])
         serverURL = sys.argv[1]
     except Exception as e:
         print(e)
-        print("Non IP address, connecting to localhost server")
 
 # Listen for the client connections
 serverSocket = socket(AF_INET, SOCK_STREAM)
