@@ -72,9 +72,12 @@ def handle_upload(clientSocket, command):
         # Prepare the filename and size and send it to the server
         msg = filename + ';' + str(file_size)
         clientSocket.send(msg.encode())
-        msg = clientSocket.recv(BUFFER_SIZE).decode() # wait for server's "Ready to receive a file" msg
+        # Wait for server's "Ready to receive a file" msg
+        msg = clientSocket.recv(BUFFER_SIZE).decode()
+        print("Server Response: " + msg)
 
         # Start sending the file
+        print("Sending...")
         f = open(path + '/' + filename, "rb")
         data = f.read(1024)
         while (data):
@@ -145,6 +148,14 @@ def handle_download(clientSocket, command):
     except:
         return False
 
+# Check if server is on local host or on 
+# IPv4 address provided in input.
+if len(sys.argv) == 2:
+    try:
+        socket.inet_aton(argv[1])
+        serverURL = argv[1]
+    except:
+        print("Non IP address, connecting to localhost server")
 
 # Create TCP socket for connections with the server
 clientSocket = socket(AF_INET, SOCK_STREAM)
@@ -181,4 +192,4 @@ while True:
     if connection_error:
         print("Connection dropped")
         clientSocket.close()
-        break;
+        break

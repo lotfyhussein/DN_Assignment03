@@ -145,22 +145,26 @@ while True:
 
     error_occured = False
     while True:
-        data = connectSocket.recv(BUFFER_SIZE).decode()
-        if not data:
-            continue
-        if data == "LIST_FILES":
-            error_occured = not handle_list_files(connectSocket)
-        elif data == "UPLOAD":
-            error_occured = not handle_upload(connectSocket)
-        elif data == "DOWNLOAD":
-            error_occured = not handle_download(connectSocket)
-        elif data == "DISCONNECT":
-            print("Client disconnected")
-            connectSocket.close()
-            break
+        try:
+            data = connectSocket.recv(BUFFER_SIZE).decode()
+            if not data:
+                continue
+            if data == "LIST_FILES":
+                error_occured = not handle_list_files(connectSocket)
+            elif data == "UPLOAD":
+                error_occured = not handle_upload(connectSocket)
+            elif data == "DOWNLOAD":
+                error_occured = not handle_download(connectSocket)
+            elif data == "DISCONNECT":
+                print("Client disconnected")
+                connectSocket.close()
+                break
 
-        # If error occured with the connection with the client
-        # close the connect socket
-        if error_occured:
-            connectSocket.close()
+            # If error occured with the connection with the client
+            # close the connect socket
+            if error_occured:
+                connectSocket.close()
+                break
+        except:
+            print("Client disconnected forcefully")
             break
